@@ -26,6 +26,9 @@ namespace Resizer {
     private Settings settings = new Settings (Constants.PROJECT_NAME);
     private Gtk.SpinButton width_entry;
     private Gtk.SpinButton height_entry;
+    private Gtk.Widget cancel_btn;
+    private Gtk.Widget resize_btn;
+    private Gtk.Stack pages;
 
     public Window () {
       Object (border_width: 6,
@@ -35,6 +38,7 @@ namespace Resizer {
       this.default_width = 200;
       this.title = _("Resizer");
 
+      // Input page
       var label = new Gtk.Label (_("Resize image within:"));
       label.halign = Gtk.Align.START;
 
@@ -65,11 +69,52 @@ namespace Resizer {
       grid.attach(height_entry, 1, 2, 1, 1);
       grid.row_spacing = 6;
 
-      Gtk.Box content = get_content_area () as Gtk.Box;
-      content.add (grid);
+      // Gtk.Box content = get_content_area () as Gtk.Box;
+      // content.add (grid);
 
-      this.add_button(_("Cancel"), Gtk.ResponseType.CLOSE);
-      var resize_btn = this.add_button(_("Resize"), Gtk.ResponseType.APPLY);
+      // Progress page
+      var progress_page = new Gtk.Grid ();
+      progress_page.margin = 6;
+
+      Gtk.ProgressBar bar = new Gtk.ProgressBar ();
+      bar.set_text ("Resizing");
+      bar.set_show_text (true);
+      GLib.Timeout.add (500, () => {
+          // Get the current progress:
+          // (0.0 -> 0%; 1.0 -> 100%)
+          double progress = bar.get_fraction ();
+
+          // Update the bar:
+          progress = progress + 0.2;
+          bar.set_fraction (progress);
+
+          // Repeat until 100%
+          // return progress < 1.0;
+          if ( progress > 1.0 ) {
+            bar.set_fraction (0.0);
+          }
+          return true;
+          // return progress < 1.0;
+      });
+      progress_page.add (bar);
+
+      // Pages
+      pages = new Gtk.Stack ();
+      pages.transition_type = Gtk.StackTransitionType.SLIDE_LEFT_RIGHT;
+      pages.add_named (grid, "input");
+      pages.add_named (progress_page, "progress");
+      pages.set_visible_child_name ("input");
+      get_content_area ().add (pages);
+
+      GLib.Timeout.add (3000, () => {
+        pages.set_visible_child_name ("progress");
+        cancel_btn.sensitive = false;
+        resize_btn.sensitive = false;
+        return false;
+      });
+
+      cancel_btn = this.add_button(_("Cancel"), Gtk.ResponseType.CLOSE);
+      resize_btn = this.add_button(_("Resize"), Gtk.ResponseType.APPLY);
       resize_btn.get_style_context ().add_class (Gtk.STYLE_CLASS_SUGGESTED_ACTION);
       resize_btn.can_default = true;
       this.set_default (resize_btn);
